@@ -1,2 +1,6 @@
 config.py
 .idea
+.ipynb_checkpoints
+iframe_figures
+.cache
+venv
