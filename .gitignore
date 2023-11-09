@@ -4,3 +4,7 @@ config.py
 iframe_figures
 .cache
 venv
+.DS_Store
+Labs/.DS_Store
+__pycache__
+exportToHTML
