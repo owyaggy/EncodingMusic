@@ -23,7 +23,7 @@ def create_event_data(items_to_add, base_df, row):
     return event_data
 
 
-def cleaner(x, items_to_add):
+def cleaner(x: pd.DataFrame, items_to_add: list):
 
     x['event_data'] = [create_event_data(items_to_add, x, row) for index, row in x.iterrows()]
 
@@ -151,16 +151,22 @@ def add_nationalities(input_df):
     return input_df
 
 
-def app(dataframe_source, column, value, items_to_add_param=('workperformed', 'composerName', 'nationalities')):
-    inner_df = pd.read_csv(dataframe_source)
-    # do this for whatever columns you want to add to the event dataframe (nationality, name or work performed, etc.)
-    # they just need to be the exact names
-
-    inner_df = add_nationalities(inner_df)
-    # This line of code is the most computationally intensive, and can take many minutes to run.
-    inner_data = cleaner(inner_df, list(items_to_add_param))
-    make_bar_chart(inner_data, column, value)
+def bar_chart(pickle_data, column, value):
+    inner_df = pd.read_pickle(pickle_data)
+    make_bar_chart(inner_df, column, value)
 
 
-data_source = 'Labs/CarnegieData/Events1900_2000_with_genre.csv'
-app(data_source, 'genreLabel', 'jazz')
+option = st.selectbox(
+   "What attribute would you like to graph?",
+   ("Email", "Home phone", "Mobile phone"),
+   index=None,
+   placeholder="Select contact method...",
+)
+
+options = st.multiselect(
+    'Select the nationalities:',
+    ['Green', 'Yellow', 'Red', 'Blue'],
+    ['Yellow', 'Red'])
+
+pickle = 'Labs/testPickle.pkl'
+bar_chart(pickle, 'genreLabel', 'jazz')
