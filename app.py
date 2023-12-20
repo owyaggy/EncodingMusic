@@ -39,15 +39,17 @@ def cleaner(x: pd.DataFrame, items_to_add: list):
     # creates a year column
     x['year'] = [int(date[:4]) for date in x['date']]
 
+    x['genreLabel'] = x['genreLabel'].map(str.lower)
+
     return x
 
 
-def create_event_frequency_list(df, lookup_range, column, specific_value):
+def create_event_frequency_list(df, lookup_range, column, specific_value, normalize=False):
     column_key = {'Genre': 'genreLabel', 'Nationality': 'nationalities', 'Work': 'workperformed', 'Composer': 'composer'}
     column = column_key[column]
     if column == 'genreLabel':
         specific_value = specific_value.lower()
-    elif column in ('work', 'composer'):
+    elif column in ('workperformed', 'composer'):
         specific_value = specific_value[specific_value.index('#') + 1:specific_value.index(')')]
     frequency_list = []
     for year in lookup_range:
@@ -62,7 +64,7 @@ def create_event_frequency_list(df, lookup_range, column, specific_value):
             # create a boolean column for whether the specific value can be found in a work performed at that event
             has_value = []
 
-            # iterate through events in specific year
+            # iterate through events in year
             for index, row in sub_df.iterrows():
                 # isolate the entry in the column for the current event
                 important_column = sub_df['event_data'][index][column]
@@ -95,9 +97,9 @@ def create_event_frequency_list(df, lookup_range, column, specific_value):
             # create the frequency list
             try:  # if the desired event has occurred in this year, add the number of times it occured
                 if column == 'nationalities':
-                    frequency_list.append(sub_df.value_counts(specific_value[0]).to_dict()[True])
+                    frequency_list.append(sub_df.value_counts(specific_value[0], normalize=normalize).to_dict()[True])
                 else:
-                    frequency_list.append(sub_df.value_counts(specific_value).to_dict()[True])
+                    frequency_list.append(sub_df.value_counts(specific_value, normalize=normalize).to_dict()[True])
             except KeyError:  # if the desired event has not occurred in this year
                 frequency_list.append(0)
 
@@ -106,7 +108,7 @@ def create_event_frequency_list(df, lookup_range, column, specific_value):
 
         # if it has to do with events (genre, work, etc)
         else:
-            attribute_counts = df[df['year'] == year].value_counts(column)
+            attribute_counts = df[df['year'] == year].value_counts(column, normalize=normalize)
 
             # getting the count for the specific value
             try:
@@ -120,7 +122,7 @@ def create_event_frequency_list(df, lookup_range, column, specific_value):
     return frequency_list
 
 
-def make_bar_chart(df, column, specific_value, lookup_range=(0, 0)):
+def make_bar_chart(df, column, specific_value, normalize=False, lookup_range=(0, 0)):
     """make a bar chart of the frequency of "specific_value", which is a value in "column" over "lookup_range" years"""
     # Create a DataFrame for bar chart
 
@@ -134,8 +136,10 @@ def make_bar_chart(df, column, specific_value, lookup_range=(0, 0)):
     else:
         years = list(set(df['year'].to_list()))
 
+
     # list of frequencies
-    frequency = create_event_frequency_list(df, years, column, specific_value)
+    frequency = create_event_frequency_list(df, years, column, specific_value, normalize)
+
 
     bar_data = {'Years': years,
                 'frequency': frequency}
@@ -145,10 +149,10 @@ def make_bar_chart(df, column, specific_value, lookup_range=(0, 0)):
     # labels to use for those axes, and an overall title for the figure
 
     fig = px.bar(df_bar,
-                 x='Years', y='frequency',
+                 x = 'Years', y= 'frequency',
                  labels={'Years': 'Years', 'frequency': f'Performances of {column.title()}: {specific_value}'},
                  title=f'Performances of {column.title()}: {specific_value} by Year',
-                 )
+                )
     # Set width and height in pixels
     fig.update_layout(width=600, height=400)
     # If in notebook, use below code:
@@ -177,9 +181,9 @@ def add_nationalities(input_df):
     return input_df
 
 
-def bar_chart(pickle_data, column, value):
+def bar_chart(pickle_data, column, value, normalize=False):
     inner_df = pd.read_pickle(pickle_data)
-    make_bar_chart(inner_df, column, value)
+    make_bar_chart(inner_df, column, value, normalize)
 
 
 st.title("Analyzing Trends in Carnegie Hall Performance Data")
@@ -271,7 +275,7 @@ if is_value_selected():
         if st.session_state.graphType == 'Absolute Frequency':
             bar_chart(pickle, st.session_state.attribute, find_selected_value())
         elif st.session_state.graphType == 'Relative Frequency':
-            pass
+            bar_chart(pickle, st.session_state.attribute, find_selected_value(), normalize=True)
 elif any(['genreValue' in st.session_state, 'nationalityValue' in st.session_state, 'workValue' in st.session_state, 'composerValue' in st.session_state]):
     st.write('After selecting a value, you can choose the type of graph you\'d like to see.')
 else:
