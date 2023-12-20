@@ -43,6 +43,12 @@ def cleaner(x: pd.DataFrame, items_to_add: list):
 
 
 def create_event_frequency_list(df, lookup_range, column, specific_value):
+    column_key = {'Genre': 'genreLabel', 'Nationality': 'nationalities', 'Work': 'workperformed', 'Composer': 'composer'}
+    column = column_key[column]
+    if column == 'genreLabel':
+        specific_value = specific_value.lower()
+    elif column in ('work', 'composer'):
+        specific_value = specific_value[specific_value.index('#') + 1:specific_value.index(')')]
     frequency_list = []
     for year in lookup_range:
 
@@ -62,19 +68,36 @@ def create_event_frequency_list(df, lookup_range, column, specific_value):
                 important_column = sub_df['event_data'][index][column]
 
                 # check if the desired value is present in the column entry
-                has_value.append(f"{specific_value}" in important_column.to_string())
-                if not True in has_value:
-                    print('column: ', type(important_column), important_column)
-                    print('search key: ', specific_value)
-                    print('#' * 50)
+                # for nationalities, need to check if any of the desired nations are present in the column
+                if column == 'nationalities':
+                    # assume not present
+                    any_nationality_present = False
+                    # iterate through nations
+                    for nation in specific_value:
+                        # if a matching nation is found
+                        if f"{nation}" in important_column.to_string():
+                            # mark that this nationality group is present for this event
+                            any_nationality_present = True
+                            # stop searching for matches in this event
+                            break
+                    # add the boolean storing whether this nationality group was present for this event
+                    has_value.append(any_nationality_present)
+                else:
+                    # add the boolean storing whether the desired value was present for this event
+                    has_value.append(f"{specific_value}" in important_column.to_string())
 
-            sub_df[specific_value] = has_value
-            # sub_df[specific_value] = [specific_value in sub_df['event_data'][index][column].to_list() for index,
-            # row in sub_df.iterrows()]
+            if column == 'nationalities':
+                sub_df[specific_value[0]] = has_value
+            else:
+                sub_df[specific_value] = has_value
+            #             sub_df[specific_value] = [specific_value in sub_df['event_data'][index][column].to_list() for index, row in sub_df.iterrows()]
 
             # create the frequency list
             try:  # if the desired event has occurred in this year, add the number of times it occured
-                frequency_list.append(sub_df.value_counts(specific_value).to_dict()[True])
+                if column == 'nationalities':
+                    frequency_list.append(sub_df.value_counts(specific_value[0]).to_dict()[True])
+                else:
+                    frequency_list.append(sub_df.value_counts(specific_value).to_dict()[True])
             except KeyError:  # if the desired event has not occurred in this year
                 frequency_list.append(0)
 
@@ -87,7 +110,10 @@ def create_event_frequency_list(df, lookup_range, column, specific_value):
 
             # getting the count for the specific value
             try:
-                frequency_list.append(attribute_counts[specific_value])
+                if column == 'nationalities':
+                    frequency_list.append(attribute_counts[specific_value[0]])
+                else:
+                    frequency_list.append(attribute_counts[specific_value])
             except KeyError:
                 frequency_list.append(0)
 
@@ -156,17 +182,108 @@ def bar_chart(pickle_data, column, value):
     make_bar_chart(inner_df, column, value)
 
 
+st.title("Analyzing Trends in Carnegie Hall Performance Data")
+
 option = st.selectbox(
-   "What attribute would you like to graph?",
-   ("Email", "Home phone", "Mobile phone"),
-   index=None,
-   placeholder="Select contact method...",
+    "What attribute would you like to graph?",
+    ("Genre", "Nationality", "Work", "Composer"),
+    index=None,
+    placeholder="Select attribute...",
+    key='attribute'
 )
 
-options = st.multiselect(
-    'Select the nationalities:',
-    ['Green', 'Yellow', 'Red', 'Blue'],
-    ['Yellow', 'Red'])
+if st.session_state.attribute:
+    if st.session_state.attribute == 'Genre':
+        genre_options = st.selectbox(
+            'Select the genre:',
+            [genre for genre in pd.read_csv('Labs/genreLabels_list.csv')['Genre']],
+            index=None,
+            placeholder="Select genre...",
+            key='genreValue'
+        )
+    elif st.session_state.attribute == 'Nationality':
+        nationality_options = st.multiselect(
+            'Select the nationalities: *Composers who hold **any** of the chosen nationalities will be selected.*',
+            [nation for nation in pd.read_csv('Labs/nationalities_list.csv')['Nation']],
+            ['United States of America'],
+            key='nationalityValue'
+        )
+    elif st.session_state.attribute == 'Work':
+        work_list = []
+        works = pd.read_csv('Labs/works_list.csv')
+        for item, row in works.iterrows():
+            work_list.append(f"{row['title']} by {row['composerLabel']} (#{row['work'][row['work'].index('works/') + 6:]})")
+        work_options = st.selectbox(
+            'Select the work:',
+            work_list,
+            index=None,
+            placeholder="Select work...",
+            key='workValue'
+        )
+    elif st.session_state.attribute == 'Composer':
+        composer_list = []
+        composers = pd.read_csv('Labs/composers_list.csv')
+        for item, row in composers.iterrows():
+            composer_list.append(f"{row['composerLabel']} (#{row['composer'][row['composer'].index('names/') + 6:]})")
+        composer_options = st.selectbox(
+            'Select the composer:',
+            composer_list,
+            index=None,
+            placeholder="Select composer...",
+            key='composerValue'
+        )
+    else:
+        st.write("You seem to have entered something incorrectly in the attribute input!")
 
-pickle = 'Labs/testPickle.pkl'
-bar_chart(pickle, 'genreLabel', 'jazz')
+
+def is_value_selected():
+    """Returns True if the user has selected an attribute value, False if not"""
+    for key, value in st.session_state.items():
+        if value is None:
+            return False
+    return True
+
+
+def find_selected_value():
+    for key, value in st.session_state.items():
+        if 'genre' in key:
+            return value
+        elif 'nationality' in key:
+            return value
+        elif 'work' in key:
+            return value
+        elif 'composer' in key:
+            return value
+
+
+if is_value_selected():
+    graph_options = st.selectbox(
+        'Select the graph type:',
+        ('Absolute Frequency', 'Relative Frequency'),
+        index=None,
+        placeholder="Select graph type...",
+        key='graphType'
+    )
+    if st.session_state.graphType is None:
+        st.write('Select the graph type to see your graph!')
+    else:
+        pickle = 'Labs/testPickle.pkl'
+        if st.session_state.graphType == 'Absolute Frequency':
+            bar_chart(pickle, st.session_state.attribute, find_selected_value())
+        elif st.session_state.graphType == 'Relative Frequency':
+            pass
+elif any(['genreValue' in st.session_state, 'nationalityValue' in st.session_state, 'workValue' in st.session_state, 'composerValue' in st.session_state]):
+    st.write('After selecting a value, you can choose the type of graph you\'d like to see.')
+else:
+    st.write('Once you select an attribute, you can choose the specific value of that attribute you\'d like to graph!')
+
+
+
+
+#options = st.multiselect(
+#    'Select the nationalities:',
+#    ['Green', 'Yellow', 'Red', 'Blue'],
+#    ['Yellow', 'Red'])#
+#
+#pickle = 'Labs/testPickle.pkl'
+#bar_chart(pickle, 'genreLabel', 'jazz')
