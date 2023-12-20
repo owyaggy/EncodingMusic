@@ -135,7 +135,7 @@ def add_nationalities(input_df):
     """Combines nationality data csv and carnegie hall data csv together"""
     input_df.insert(6, "nationalities", pd.Series(dtype=str))
 
-    names_with_nationalities = pd.read_csv('CarnegieData/nationalities_new.csv')
+    names_with_nationalities = pd.read_csv('Labs/CarnegieData/nationalities_new.csv')
 
     # Iterate through the dataframe, adding nationalities when possible
     for index in input_df.index:
@@ -162,5 +162,5 @@ def app(dataframe_source, column, value, items_to_add_param=('workperformed', 'c
     make_bar_chart(inner_data, column, value)
 
 
-data_source = 'CarnegieData/Events1900_2000_with_genre.csv'
+data_source = 'Labs/CarnegieData/Events1900_2000_with_genre.csv'
 app(data_source, 'genreLabel', 'jazz')
