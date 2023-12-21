@@ -209,7 +209,7 @@ if st.session_state.attribute:
         nationality_options = st.multiselect(
             'Select the nationalities: *Composers who hold **any** of the chosen nationalities will be selected.*',
             [nation for nation in pd.read_csv('Labs/nationalities_list.csv')['Nation']],
-            ['United States of America'],
+            placeholder="Select nationalities...",
             key='nationalityValue'
         )
     elif st.session_state.attribute == 'Work':
@@ -243,7 +243,7 @@ if st.session_state.attribute:
 def is_value_selected():
     """Returns True if the user has selected an attribute value, False if not"""
     for key, value in st.session_state.items():
-        if value is None:
+        if value in (None, []):
             return False
     return True
 
