@@ -22,7 +22,7 @@ through a search box, avoiding the problem of typos or exact matches with attrib
 
 The user can choose between an absolute frequency graph and a relative frequency graph. Absolute frequency
 shows either:
-* For genre: The number of events in a given year with the desired genre
+* For genre: The number of events in a given year with the desired genre.
 * For nationality, composer, and work: The number of events in a year in which a work was performed that
 contains the desired attribute.
 

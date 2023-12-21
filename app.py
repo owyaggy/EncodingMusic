@@ -1,6 +1,8 @@
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+
+
 # import os
 
 # Also required:
@@ -9,43 +11,9 @@ import streamlit as st
 #   calls
 
 
-def add_to_event_info(column_name: str, item: str, event_df, base_df, row):
-    """adds a particular attribute to the sub-dataframe"""
-
-    event_df[column_name] = base_df[base_df['event'] == row['event']][item]
-    return event_df
-
-
-def create_event_data(items_to_add, base_df, row):
-    event_data = pd.DataFrame()
-    for item in items_to_add:
-        event_data = add_to_event_info(item, item, event_data, base_df, row)
-    return event_data
-
-
-def cleaner(x: pd.DataFrame, items_to_add: list):
-
-    x['event_data'] = [create_event_data(items_to_add, x, row) for index, row in x.iterrows()]
-
-    events = []
-    for index, row in x.iterrows():
-
-        # get rid of multiple rows for the same event
-        if row['event'] in events:
-            x = x.drop(index)
-        else:
-            events.append(row['event'])
-
-    # creates a year column
-    x['year'] = [int(date[:4]) for date in x['date']]
-
-    x['genreLabel'] = x['genreLabel'].map(str.lower)
-
-    return x
-
-
 def create_event_frequency_list(df, lookup_range, column, specific_value, normalize=False):
-    column_key = {'Genre': 'genreLabel', 'Nationality': 'nationalities', 'Work': 'workperformed', 'Composer': 'composer'}
+    column_key = {'Genre': 'genreLabel', 'Nationality': 'nationalities', 'Work': 'workperformed',
+                  'Composer': 'composer'}
     column = column_key[column]
     if column == 'genreLabel':
         specific_value = specific_value.lower()
@@ -136,10 +104,8 @@ def make_bar_chart(df, column, specific_value, normalize=False, lookup_range=(0,
     else:
         years = list(set(df['year'].to_list()))
 
-
     # list of frequencies
     frequency = create_event_frequency_list(df, years, column, specific_value, normalize)
-
 
     bar_data = {'Years': years,
                 'frequency': frequency}
@@ -149,10 +115,10 @@ def make_bar_chart(df, column, specific_value, normalize=False, lookup_range=(0,
     # labels to use for those axes, and an overall title for the figure
 
     fig = px.bar(df_bar,
-                 x = 'Years', y= 'frequency',
+                 x='Years', y='frequency',
                  labels={'Years': 'Years', 'frequency': f'Performances of {column.title()}: {specific_value}'},
                  title=f'Performances of {column.title()}: {specific_value} by Year',
-                )
+                 )
     # Set width and height in pixels
     fig.update_layout(width=600, height=400)
     # If in notebook, use below code:
@@ -216,7 +182,8 @@ if st.session_state.attribute:
         work_list = []
         works = pd.read_csv('Labs/works_list.csv')
         for item, row in works.iterrows():
-            work_list.append(f"{row['title']} by {row['composerLabel']} (#{row['work'][row['work'].index('works/') + 6:]})")
+            work_list.append(
+                f"{row['title']} by {row['composerLabel']} (#{row['work'][row['work'].index('works/') + 6:]})")
         work_options = st.selectbox(
             'Select the work:',
             work_list,
@@ -276,18 +243,8 @@ if is_value_selected():
             bar_chart(pickle, st.session_state.attribute, find_selected_value())
         elif st.session_state.graphType == 'Relative Frequency':
             bar_chart(pickle, st.session_state.attribute, find_selected_value(), normalize=True)
-elif any(['genreValue' in st.session_state, 'nationalityValue' in st.session_state, 'workValue' in st.session_state, 'composerValue' in st.session_state]):
+elif any(['genreValue' in st.session_state, 'nationalityValue' in st.session_state, 'workValue' in st.session_state,
+          'composerValue' in st.session_state]):
     st.write('After selecting a value, you can choose the type of graph you\'d like to see.')
 else:
     st.write('Once you select an attribute, you can choose the specific value of that attribute you\'d like to graph!')
-
-
-
-
-#options = st.multiselect(
-#    'Select the nationalities:',
-#    ['Green', 'Yellow', 'Red', 'Blue'],
-#    ['Yellow', 'Red'])#
-#
-#pickle = 'Labs/testPickle.pkl'
-#bar_chart(pickle, 'genreLabel', 'jazz')
