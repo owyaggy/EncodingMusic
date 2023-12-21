@@ -271,7 +271,7 @@ if is_value_selected():
     if st.session_state.graphType is None:
         st.write('Select the graph type to see your graph!')
     else:
-        pickle = 'Labs/testPickle.pkl'
+        pickle = 'Labs/finalPickle.pkl'
         if st.session_state.graphType == 'Absolute Frequency':
             bar_chart(pickle, st.session_state.attribute, find_selected_value())
         elif st.session_state.graphType == 'Relative Frequency':
