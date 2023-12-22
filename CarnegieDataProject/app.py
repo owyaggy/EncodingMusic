@@ -64,7 +64,7 @@ def create_event_frequency_list(df, lookup_range, column, specific_value, normal
                     has_value.append(any_nationality_present)
                 else:
                     # add the boolean storing whether the desired value was present for this event
-                    has_value.append(f"{specific_value}" in important_column.to_string())
+                    has_value.append(f"/{specific_value}" in important_column.to_string())
 
             if column == 'nationalities':
                 sub_df[specific_value[0]] = has_value
