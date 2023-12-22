@@ -8,27 +8,41 @@ import streamlit as st
 
 
 def create_event_frequency_list(df, lookup_range, column, specific_value, normalize=False):
+    """
+    Given a lookup_range of years, and a specific_value in a column to look for, this function
+    returns a list of frequencies of that specific_value per year.
+
+    Note that specific_value must appear in column.
+
+    Setting the normalize parameter to True will instead return a list of the proportions
+    count(specific_value)/total number of performances per year
+    """
+
+    # converts user inputs into column names in df
     column_key = {'Genre': 'genreLabel', 'Nationality': 'nationalities', 'Work': 'workperformed',
                   'Composer': 'composer'}
     column = column_key[column]
+
+    # cleaning work to make sure everything matches up
     if column == 'genreLabel':
         specific_value = specific_value.lower()
     elif column in ('workperformed', 'composer'):
         specific_value = specific_value[specific_value.index('#') + 1:specific_value.index(')')]
+
     frequency_list = []
+
     for year in lookup_range:
 
-        # if it has to do with works and not events (composer, nationality, etc)
+        # if it has to do with works and not events (composer, nationality, etc.)
         if column in df['event_data'][0].columns:
 
             # create smaller dataframe with events only in that year to simplify
             sub_df = df[df['year'] == year].copy()
-            # print(sub_df['event_data'])
 
             # create a boolean column for whether the specific value can be found in a work performed at that event
             has_value = []
 
-            # iterate through events in year
+            # iterate through events in specific year
             for index, row in sub_df.iterrows():
                 # isolate the entry in the column for the current event
                 important_column = sub_df['event_data'][index][column]
@@ -41,7 +55,7 @@ def create_event_frequency_list(df, lookup_range, column, specific_value, normal
                     # iterate through nations
                     for nation in specific_value:
                         # if a matching nation is found
-                        if f"{nation}" in important_column.to_string():
+                        if nation in important_column.to_string():
                             # mark that this nationality group is present for this event
                             any_nationality_present = True
                             # stop searching for matches in this event
@@ -56,10 +70,9 @@ def create_event_frequency_list(df, lookup_range, column, specific_value, normal
                 sub_df[specific_value[0]] = has_value
             else:
                 sub_df[specific_value] = has_value
-            #             sub_df[specific_value] = [specific_value in sub_df['event_data'][index][column].to_list() for index, row in sub_df.iterrows()]
 
             # create the frequency list
-            try:  # if the desired event has occurred in this year, add the number of times it occured
+            try:  # if the desired event has occurred in this year, add the number of times it occurred
                 if column == 'nationalities':
                     frequency_list.append(sub_df.value_counts(specific_value[0], normalize=normalize).to_dict()[True])
                 else:
@@ -67,11 +80,9 @@ def create_event_frequency_list(df, lookup_range, column, specific_value, normal
             except KeyError:  # if the desired event has not occurred in this year
                 frequency_list.append(0)
 
-        #             # remove the extra column
-        #             sub_df.drop(columns=[specific_value])
-
         # if it has to do with events (genre, work, etc)
         else:
+            # get a dictionary of the frequencies
             attribute_counts = df[df['year'] == year].value_counts(column, normalize=normalize)
 
             # getting the count for the specific value
@@ -86,8 +97,12 @@ def create_event_frequency_list(df, lookup_range, column, specific_value, normal
     return frequency_list
 
 
-def make_bar_chart(df, column, specific_value, normalize=False, lookup_range=(0, 0)):
-    """make a bar chart of the frequency of "specific_value", which is a value in "column" over "lookup_range" years"""
+def make_bar_chart(df, column, specific_value, lookup_range=(0, 0), normalize=False):
+    """
+    make a bar chart of the frequency of "specific_value", which is a value in "column" over "lookup_range" years
+
+    Note: if normalize=True it will instead return a bar chart of proportions
+    """
     # Create a DataFrame for bar chart
 
     # years is the x-axis
