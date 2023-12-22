@@ -2,13 +2,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-
-# import os
-
-# Also required:
-# • A csv with all the event data returned by the SPARQL query
-# • A csv with that matches the wikidata IDs for each composer to their nationality, from a previously-ran series of API
-#   calls
+# REQUIRES a pickle file
 
 
 def create_event_frequency_list(df, lookup_range, column, specific_value, normalize=False):
@@ -121,39 +115,24 @@ def make_bar_chart(df, column, specific_value, normalize=False, lookup_range=(0,
                  )
     # Set width and height in pixels
     fig.update_layout(width=600, height=400)
-    # If in notebook, use below code:
-    # fig.show()
+
     # If in streamlit, use below code:
     st.plotly_chart(fig, theme=None, use_container_width=True)
-
-
-def add_nationalities(input_df):
-    """Combines nationality data csv and carnegie hall data csv together"""
-    input_df.insert(6, "nationalities", pd.Series(dtype=str))
-
-    names_with_nationalities = pd.read_csv('Labs/CarnegieData/nationalities_new.csv')
-
-    # Iterate through the dataframe, adding nationalities when possible
-    for index in input_df.index:
-        nationalities = names_with_nationalities.loc[
-            names_with_nationalities['composer'] == input_df.loc[index, 'composer']]
-        nationalities = nationalities['nationalities']
-        nationalities = nationalities.get(nationalities.keys()[0])
-        try:
-            input_df.at[index, 'nationalities'] = nationalities
-        except KeyError:
-            print(input_df.loc[index])
-
-    return input_df
+    # If in notebook, use fig.show() instead
 
 
 def bar_chart(pickle_data, column, value, normalize=False):
+    """Helper function that passes user input from Streamlit into the bar chart creator function"""
+    # convert data from stored .pkl format to pandas dataframe
     inner_df = pd.read_pickle(pickle_data)
+    # make the bar chart
     make_bar_chart(inner_df, column, value, normalize)
 
 
+# Main Streamlit APP
 st.title("Analyzing Trends in Carnegie Hall Performance Data")
 
+# prompts user to select attribute
 option = st.selectbox(
     "What attribute would you like to graph?",
     ("Genre", "Nationality", "Work", "Composer"),
@@ -162,28 +141,45 @@ option = st.selectbox(
     key='attribute'
 )
 
+# if the user has selected an attribute
 if st.session_state.attribute:
+    # if genre selected
     if st.session_state.attribute == 'Genre':
+        # ask user to choose genre from list derived from previously created csv
         genre_options = st.selectbox(
             'Select the genre:',
-            [genre for genre in pd.read_csv('Labs/genreLabels_list.csv')['Genre']],
+            [genre for genre in pd.read_csv('Data/genreLabels_list.csv')['Genre']],
             index=None,
             placeholder="Select genre...",
             key='genreValue'
         )
+    # if nationality selected
     elif st.session_state.attribute == 'Nationality':
+        # ask user to choose nationality from list derived from previously created csv listing all nationalities
         nationality_options = st.multiselect(
             'Select the nationalities: *Composers who hold **any** of the chosen nationalities will be selected.*',
-            [nation for nation in pd.read_csv('Labs/nationalities_list.csv')['Nation']],
+            [nation for nation in pd.read_csv('Data/nationalities_list.csv')['Nation']],
             placeholder="Select nationalities...",
             key='nationalityValue'
         )
+    # if work selected
     elif st.session_state.attribute == 'Work':
+        # create a list of all the works for the user to select from
         work_list = []
-        works = pd.read_csv('Labs/works_list.csv')
+        # fetch the csv with the list of all works
+        works = pd.read_csv('Data/works_list.csv')
+        # iterate through all the works from the csv
         for item, row in works.iterrows():
-            work_list.append(
-                f"{row['title']} by {row['composerLabel']} (#{row['work'][row['work'].index('works/') + 6:]})")
+            # add the work to the selection list, combining with "by {composer} (#{carnegie work id})"
+            # if they have a named composer, show the composer name
+            if len(row['composerLabel']) != 0:
+                work_list.append(
+                    f"{row['title']} by {row['composerLabel']} (#{row['work'][row['work'].index('works/') + 6:]})")
+            # if they have no named composer, show Unknown instead
+            else:
+                work_list.append(
+                    f"{row['title']} by Unknown (#{row['work'][row['work'].index('works/') + 6:]})")
+        # ask user to choose work from the created list of options
         work_options = st.selectbox(
             'Select the work:',
             work_list,
@@ -191,11 +187,17 @@ if st.session_state.attribute:
             placeholder="Select work...",
             key='workValue'
         )
+    # if composer selected
     elif st.session_state.attribute == 'Composer':
+        # create a list of all the composers for the user to select from
         composer_list = []
-        composers = pd.read_csv('Labs/composers_list.csv')
+        # fetch the csv with the list of all composers
+        composers = pd.read_csv('Data/composers_list.csv')
+        # iterate through all the composers from the csv
         for item, row in composers.iterrows():
+            # add the composer to the selection list, combining with "(#{carnegie composer id})"
             composer_list.append(f"{row['composerLabel']} (#{row['composer'][row['composer'].index('names/') + 6:]})")
+        # ask user to choose composer from the created list of options
         composer_options = st.selectbox(
             'Select the composer:',
             composer_list,
@@ -203,6 +205,7 @@ if st.session_state.attribute:
             placeholder="Select composer...",
             key='composerValue'
         )
+    # should be unreachable - if user selects an attribute not among genre, nationality, work, or composer:
     else:
         st.write("You seem to have entered something incorrectly in the attribute input!")
 
@@ -216,6 +219,7 @@ def is_value_selected():
 
 
 def find_selected_value():
+    """Returns the user's selected attribute value after determining which attribute was selected"""
     for key, value in st.session_state.items():
         if 'genre' in key:
             return value
@@ -227,7 +231,9 @@ def find_selected_value():
             return value
 
 
+# if the user has selected an attribute value
 if is_value_selected():
+    # ask the user to choose between absolute and relative frequency for the graph
     graph_options = st.selectbox(
         'Select the graph type:',
         ('Absolute Frequency', 'Relative Frequency'),
@@ -235,16 +241,25 @@ if is_value_selected():
         placeholder="Select graph type...",
         key='graphType'
     )
+    # if user has not yet chosen graph type
     if st.session_state.graphType is None:
         st.write('Select the graph type to see your graph!')
+    # if user has chosen graph type
     else:
-        pickle = 'Labs/finalPickle.pkl'
+        # set the file path for the .pkl file containing all event data
+        pickle = 'Data/event_data.pkl'
+        # if absolute frequency selected, create corresponding bar chart
         if st.session_state.graphType == 'Absolute Frequency':
             bar_chart(pickle, st.session_state.attribute, find_selected_value())
+        # if relative frequency selected, create corresponding bar chart
         elif st.session_state.graphType == 'Relative Frequency':
             bar_chart(pickle, st.session_state.attribute, find_selected_value(), normalize=True)
+# if the user has not selected an attribute value, but has selected an attribute
 elif any(['genreValue' in st.session_state, 'nationalityValue' in st.session_state, 'workValue' in st.session_state,
           'composerValue' in st.session_state]):
+    # give prompt to select value
     st.write('After selecting a value, you can choose the type of graph you\'d like to see.')
+# if attribute has not been selected
 else:
+    # give prompt to select attribute
     st.write('Once you select an attribute, you can choose the specific value of that attribute you\'d like to graph!')
