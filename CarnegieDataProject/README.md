@@ -35,3 +35,8 @@ To run this app, run the command:
 `python -m streamlit run app.py`
 Alternatively, run:
 `streamlit run app.py`
+
+#### Troubleshooting
+
+When running the app, *make sure your current working directory is*
+`CarnegieDataProject`
