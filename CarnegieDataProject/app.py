@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+
 # REQUIRES a pickle file
 
 
@@ -97,7 +98,7 @@ def create_event_frequency_list(df, lookup_range, column, specific_value, normal
     return frequency_list
 
 
-def make_bar_chart(df, column, specific_value, lookup_range=(0, 0), normalize=False):
+def make_bar_chart(df, column, specific_value, normalize=False, lookup_range=(0, 0)):
     """
     make a bar chart of the frequency of "specific_value", which is a value in "column" over "lookup_range" years
 
@@ -230,7 +231,7 @@ if st.session_state.attribute:
 def is_value_selected():
     """Returns True if the user has selected an attribute value, False if not"""
     for key, value in st.session_state.items():
-        if value in (None, []):
+        if 'graph' not in key and value in (None, []):
             return False
     return True
 

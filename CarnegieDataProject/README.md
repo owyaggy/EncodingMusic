@@ -38,5 +38,8 @@ Alternatively, run:
 
 #### Troubleshooting
 
-When running the app, *make sure your current working directory is*
+* When running the app, *make sure your current working directory is*
 `CarnegieDataProject`
+* It's normal to take a long time (up to a minute) to produce a graph. However,
+if the app is taking more than 10 seconds to load before you've selected any
+options, you should restart the app (reload).
